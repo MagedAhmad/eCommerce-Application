@@ -55,4 +55,16 @@ public class UserControllerTest {
         assertEquals(u.getUsername(), user1.getBody().getUsername());
     }
 
+    @Test
+    public void find_user_by_username() {
+        when(encoder.encode("password")).thenReturn("encryptedPass");
+        CreateUserRequest u = new CreateUserRequest();
+        u.setUsername("test");
+        u.setPassword("password");
+        u.setConfirmPassword("password");
+        ResponseEntity<User> user1 = userController.createUser(u);
+        ResponseEntity<User> user = userController.findByUserName("test");
+        assertEquals(u.getUsername(), user1.getBody().getUsername());
+    }
+
 }

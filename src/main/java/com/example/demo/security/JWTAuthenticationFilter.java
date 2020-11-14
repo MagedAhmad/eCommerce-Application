@@ -2,6 +2,8 @@ package com.example.demo.security;
 
 import com.auth0.jwt.JWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -24,6 +26,8 @@ import static com.example.demo.security.SecurityConstants.SECRET;
 import static com.example.demo.security.SecurityConstants.TOKEN_PREFIX;
 
 public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
+    private static final Logger logger = LoggerFactory.getLogger(JWTAuthenticationFilter.class);
+
     private AuthenticationManager authenticationManager;
 
     public JWTAuthenticationFilter(AuthenticationManager authenticationManager) {
@@ -34,16 +38,16 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     public Authentication attemptAuthentication(HttpServletRequest req,
                                                 HttpServletResponse res) throws AuthenticationException {
         try {
-            User creds = new ObjectMapper()
-                    .readValue(req.getInputStream(), User.class);
-
+            com.example.demo.model.persistence.User credentials = new ObjectMapper()
+                    .readValue(req.getInputStream(), com.example.demo.model.persistence.User.class);
             return authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            creds.getUsername(),
-                            creds.getPassword(),
+                            credentials.getUsername(),
+                            credentials.getPassword(),
                             new ArrayList<>())
             );
         } catch (IOException e) {
+            logger.error("Authentication attempt failed with error: ", e.getMessage());
             throw new RuntimeException(e);
         }
     }
@@ -52,12 +56,22 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     protected void successfulAuthentication(HttpServletRequest req,
                                             HttpServletResponse res,
                                             FilterChain chain,
-                                            Authentication auth) throws IOException, ServletException {
+                                            Authentication auth) {
 
         String token = JWT.create()
                 .withSubject(((User) auth.getPrincipal()).getUsername())
-                .withExpiresAt(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-                .sign(HMAC512(SECRET.getBytes()));
-        res.addHeader(HEADER_STRING, TOKEN_PREFIX + token);
+                .withExpiresAt(new Date(System.currentTimeMillis() + SecurityConstants.EXPIRATION_TIME))
+                .sign(HMAC512(SecurityConstants.SECRET.getBytes()));
+        res.addHeader(SecurityConstants.HEADER_STRING, SecurityConstants.TOKEN_PREFIX + token);
+        logger.info("User {} authenticated, JWT issued", ((User) auth.getPrincipal()).getUsername());
+    }
+
+    @Override
+    protected void unsuccessfulAuthentication(javax.servlet.http.HttpServletRequest request,
+                                              javax.servlet.http.HttpServletResponse response,
+                                              AuthenticationException failed)
+            throws IOException, javax.servlet.ServletException {
+        logger.error("Authentication attempt failed. {}.", failed.getMessage());
+        super.unsuccessfulAuthentication(request, response, failed);
     }
 }

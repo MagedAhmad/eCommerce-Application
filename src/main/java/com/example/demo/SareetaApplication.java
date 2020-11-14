@@ -10,7 +10,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 @EnableJpaRepositories("com.example.demo.model.persistence.repositories")
 @EntityScan("com.example.demo.model.persistence")
-@SpringBootApplication
+@SpringBootApplication(exclude = {SecurityAutoConfiguration.class})
 public class SareetaApplication {
 
 	@Bean
